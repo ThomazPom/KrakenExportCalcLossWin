@@ -3,7 +3,7 @@ from functools import reduce
 import pandas as pd, pprint as pp
 from openpyxl.utils.cell import get_column_letter
 
-trades = pd.read_csv("trades.csv")
+trades = pd.read_csv("trades.tom.csv")
 
 trades.reindex(index=trades.index[::-1])
 
@@ -16,7 +16,7 @@ cessions = [
 for tradei in trades.iterrows():
     trade = tradei[1]
 
-    if not trade["cost"]:
+    if not trade["cost"] or "EUR" not in trade["pair"]:
         continue
     balances.setdefault(trade["pair"], {"buys": []})
     balance = balances.get(trade["pair"])
