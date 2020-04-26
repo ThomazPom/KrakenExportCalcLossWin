@@ -3,7 +3,9 @@ from functools import reduce
 import pandas as pd, pprint as pp
 from openpyxl.utils.cell import get_column_letter
 
-trades = pd.read_csv("trades.tom.csv")
+input = "trades"
+
+trades = pd.read_csv(f"{input}.csv")
 
 trades.reindex(index=trades.index[::-1])
 
@@ -79,7 +81,7 @@ cessions.insert(0, {key: key for key in cessions[0].keys()})
 import xlsxwriter
 
 # Create an new Excel file and add a worksheet.
-workbook = xlsxwriter.Workbook('result.xlsx')
+workbook = xlsxwriter.Workbook(f'{input}.xlsx')
 worksheet = workbook.add_worksheet()
 worksheet.set_column('A:Z', 12)
 
@@ -101,7 +103,7 @@ for idx1, val1 in enumerate(cessions):
         if type(val2) is float:
             worksheet.write_number(idx1, idx2, round(val2, 2))
             worksheet.write_formula(0, idx2,
-                                    f"=SUBTOTAL(9,{get_column_letter(idx2+1)}{rowdecal + 2}:{get_column_letter(idx2+1)}{len(cessions) + rowdecal + 2})")
+                                    f"=SUBTOTAL(9,{get_column_letter(idx2 + 1)}{rowdecal + 2}:{get_column_letter(idx2 + 1)}{len(cessions) + rowdecal + 2})")
         else:
             worksheet.write_string(idx1, idx2, str(val2))
 
