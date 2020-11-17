@@ -1,3 +1,5 @@
+import json
+
 import functions
 import os, datetime, pprint
 
@@ -8,6 +10,7 @@ day_one = datetime.datetime(datetime.datetime.now().year, 1, 1, 0)
 user = "thomas"
 
 cessions = []
+cessions_raw = []
 
 balances = {
 
@@ -105,7 +108,7 @@ def trade_group(partial_trade, trades, index):
         if current_trade.get("ordertxid"):
             result = merge_trade(partial_trade)
         else:
-            result=partial_trade
+            result = partial_trade
         current_trade = {}
     return result
     # if index+1==len(trades) or current_trade.get("trades_id")
@@ -117,7 +120,7 @@ for index, partial_trade in enumerate(trades):
         continue
 
     trade = trade_group(partial_trade, trades, index)
-    #trade=partial_trade
+    # trade=partial_trade
     if not trade:
         continue
 
@@ -154,9 +157,12 @@ for index, partial_trade in enumerate(trades):
 
         status["224"] = status["218"] - status["223"] * status["217"] / status["212"]  # C18-C23*C17/C12
         status["Order ID"] = trade.get("ordertxid")
-        #status["Balance"] = balances
+        # status["Balance"] = balances
+        cessions_raw.append(status)
         last_cession = {ktranslate(k): v for k, v in status.items()}
         cessions.append(last_cession)
         status["219"] = 0
 functions.workbook(cessions, f"cessions.{user}.xlsx",
                    lambda x: {'bg_color': "90ee90" if x[ktranslate("224")] > 0 else "ffa07a"})
+
+json.dump(cessions_raw, open(f"cessions.{user}.json", "w"), indent=4)
