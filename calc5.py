@@ -5,8 +5,15 @@ import os, datetime, pprint
 
 pp = pprint.pprint
 
-day_zero = datetime.datetime(datetime.datetime.now().year - 3, 1, 1, 0)
-day_one = datetime.datetime(datetime.datetime.now().year, 1, 1, 0)
+year = datetime.datetime.now().year
+year = 2020
+day_zero = datetime.datetime(year - 5, 1, 1, 0)
+day_one = datetime.datetime(year, 1, 1, 0)
+day_end = datetime.datetime(year + 1, 1, 1, 0)
+
+start_time = day_one.timestamp()
+end_time = day_end.timestamp()
+
 user = "thomas"
 
 cessions = []
@@ -64,7 +71,6 @@ last_cession = False
 ledgers.sort(key=lambda x: x["time"])
 trades.sort(key=lambda x: x["time"])
 
-start_time = 1577836800
 best_date = 0
 
 for trade in trades:
@@ -123,8 +129,8 @@ for index, partial_trade in enumerate(trades):
     # trade=partial_trade
     if not trade:
         continue
-
-    print(trade)
+    if trade.get("time")>end_time:
+        break
     for ledger in ledgers:
         if ledger["asset"] != "ZEUR" and ledger.get("time") < trade.get("time"):
             balances.setdefault(ledger["asset"], {"balance": 0})
@@ -158,7 +164,7 @@ for index, partial_trade in enumerate(trades):
         status["224"] = status["218"] - status["223"] * status["217"] / status["212"]  # C18-C23*C17/C12
         status["Order ID"] = trade.get("ordertxid")
         # status["Balance"] = balances
-        cessions_raw.append(status)
+        cessions_raw.append(status.copy())
         last_cession = {ktranslate(k): v for k, v in status.items()}
         cessions.append(last_cession)
         status["219"] = 0

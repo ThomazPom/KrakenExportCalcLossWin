@@ -1,6 +1,7 @@
 
 import datetime,math,copy
 import json
+import pathlib
 
 import requests
 import pprint, os
@@ -24,8 +25,8 @@ def query_all_kraken(type,typelow,user,day_zero,sleep,extra=dict(),sort="time"):
     continue_crawl = True
     offset = 0
     items = []
-
-    if (os.path.exists(f"{typelow}.{user}.json")):
+    cahename=f"{typelow}.{user}.json"
+    if os.path.exists(cahename) and pathlib.Path(cahename).stat().st_mtime> datetime.datetime.now().timestamp() - 3600 *24:
         items = json.load(open(f"{typelow}.{user}.json", "r"))
         continue_crawl = False
     import time
@@ -50,15 +51,16 @@ def query_all_kraken(type,typelow,user,day_zero,sleep,extra=dict(),sort="time"):
     return  items
 
 
-def update_balances_values(balances, item, user,timekey="time"):
+def update_balances_values(balances, item, user,timekey="time",offset=0):
     for key, val in balances.items():
         if key is not "ZEUR":
-            ticker = query_at(key, item.get(timekey), user)
+            ticker = query_at(key, item.get(timekey)+offset, user)
             if not ticker:
                 continue
             val["price_atm"] = ticker.get("price")
             # pp(ticker)
             val["value_atm"] = ticker.get("price") * val["balance"]
+
 
 
 def workbook(things_to_export, filename="export.xlsx", stylecond=lambda x: {'bg_color': '#e8e8e8'}):
@@ -95,25 +97,30 @@ def workbook(things_to_export, filename="export.xlsx", stylecond=lambda x: {'bg_
             idx2 = list(known_columns.keys()).index(key)
             column_letter = get_column_letter(idx2 + 1)
             is_iterable = type(val2) in [list, tuple]
+            is_keyval = type(val2) in [dict]
             max_seen_value_len[column_letter] = max(
                 max_seen_value_len.get(column_letter, 0),
-                *[len(str(x)) for x in val2] if is_iterable else [len(str(val2))], len(key)+3)
+                *[len(str(x)) for x in val2] if is_iterable
+                else [len(f"{key}: {val}") for key, val in val2.items()] if is_keyval
+                else [len(x) for x in str(val2).split("\n")], len(key) + 3)
 
             if type(val2) in [float, int]:
                 worksheet.write_number(idx1, idx2, round(val2, 2))
                 worksheet.write_formula(0, idx2, f"=SUBTOTAL(9,{column_letter}{rowdecal + 2}:{column_letter}"
                                         + f"{len(things_to_export) + rowdecal + 2})")
+
+            elif is_keyval:
+                worksheet.write_string(idx1, idx2, "\r\n".join([f"{key}: {val}" for key, val in val2.items()]))
             elif is_iterable:
                 worksheet.write_string(idx1, idx2, "\r\n".join(val2))
             else:
                 worksheet.write_string(idx1, idx2, str(val2))
-            worksheet.set_column(f"{column_letter}:{column_letter}", max_seen_value_len.get(column_letter))
+            worksheet.set_column(f"{column_letter}:{column_letter}", min(max_seen_value_len.get(column_letter),50))
     for idx, key in enumerate(known_columns.keys()):
         worksheet.write_string(1, idx, key)
 
     worksheet.autofilter(rowdecal - 1, 0, len(things_to_export) + rowdecal, len(known_columns.keys()) - 1)
     workbook.close()
-
 
 
 
@@ -160,7 +167,8 @@ def query_at(name, ts, user):
     global qatcache, not_in_list
     if name in not_in_list:
         return False
-    if (os.path.exists(f"qatcache.{user}.json")) and len(qatcache.keys()) == 0:
+    cahename=f"qatcache.{user}.json"
+    if os.path.exists(cahename) and len(qatcache.keys()) and pathlib.Path(cahename).stat().st_mtime> datetime.datetime.now().timestamp() - 3600 *24 == 0:
         qatcache = json.load(open(f"qatcache.{user}.json", "r"))
     if qatcache.get(f"{name}:{ts}"):
         return qatcache.get(f"{name}:{ts}")
@@ -201,7 +209,7 @@ def query_at(name, ts, user):
     },
                       data=json.dumps(query))
 
-    result = r.json().get("hits").get("hits");
+    result = r.json().get("hits").get("hits")
     if len(result) == 0:
         print("No result for :" + name)
         not_in_list.append(name)
