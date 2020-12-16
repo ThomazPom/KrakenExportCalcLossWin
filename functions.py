@@ -54,7 +54,7 @@ def query_all_kraken(type,typelow,user,day_zero,sleep,extra=dict(),sort="time"):
 def update_balances_values(balances, item, user,timekey="time",offset=0):
     for key, val in balances.items():
         if key is not "ZEUR":
-            ticker = query_at(key, item.get(timekey)+offset, user)
+            ticker = query_at(key, item.get(timekey)+offset, user,"cryptowatch-data-"+datetime.datetime.fromtimestamp(item.get(timekey)+offset).isoformat()[0:7])
             if not ticker:
                 continue
             val["price_atm"] = ticker.get("price")
@@ -163,12 +163,12 @@ def recompose_orders(trades):
 
 
 
-def query_at(name, ts, user):
+def query_at(name, ts, user,index="cryptowatch-data-*"):
     global qatcache, not_in_list
     if name in not_in_list:
         return False
     cahename=f"qatcache.{user}.json"
-    if os.path.exists(cahename) and len(qatcache.keys()) and pathlib.Path(cahename).stat().st_mtime> datetime.datetime.now().timestamp() - 3600 *24 == 0:
+    if os.path.exists(cahename) and len(qatcache.keys()) == 0 and pathlib.Path(cahename).stat().st_mtime> datetime.datetime.now().timestamp() - 3600 *24:
         qatcache = json.load(open(f"qatcache.{user}.json", "r"))
     if qatcache.get(f"{name}:{ts}"):
         return qatcache.get(f"{name}:{ts}")
@@ -204,7 +204,7 @@ def query_at(name, ts, user):
         "size": 1
     }
 
-    r = requests.post(f"{server}/cryptowatch-*/_search", headers={
+    r = requests.post(f"{server}/{index}/_search", headers={
         'content-type': 'application/json',
     },
                       data=json.dumps(query))

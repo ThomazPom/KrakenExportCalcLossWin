@@ -6,7 +6,7 @@ import os, datetime, pprint
 pp = pprint.pprint
 
 year = datetime.datetime.now().year
-year = 2020
+year = 2019
 day_zero = datetime.datetime(year - 5, 1, 1, 0)
 day_one = datetime.datetime(year, 1, 1, 0)
 day_end = datetime.datetime(year + 1, 1, 1, 0)
@@ -14,7 +14,7 @@ day_end = datetime.datetime(year + 1, 1, 1, 0)
 start_time = day_one.timestamp()
 end_time = day_end.timestamp()
 
-user = "thomas"
+user = "melody"
 
 cessions = []
 cessions_raw = []
