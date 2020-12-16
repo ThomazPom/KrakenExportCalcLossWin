@@ -3,6 +3,7 @@
 *.csv
 *.json
 *.sconf
+*.pdf
 python3-krakenex/
 python3krakenex/
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
