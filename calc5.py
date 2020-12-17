@@ -6,7 +6,7 @@ import os, datetime, pprint
 pp = pprint.pprint
 
 year = datetime.datetime.now().year
-year = 2019
+year = 2020
 day_zero = datetime.datetime(year - 5, 1, 1, 0)
 day_one = datetime.datetime(year, 1, 1, 0)
 day_end = datetime.datetime(year + 1, 1, 1, 0)
@@ -85,8 +85,11 @@ for trade in trades:
     functions.update_balances_values(balances, trade, user)
     value = sum([bal.get("value_atm") for name, bal in balances.items() if bal.get("value_atm")])
 
-    if value < 25 and trade.get("time") < start_time:
-        best_date = trade.get("time")
+    if trade.get("time") < start_time:
+        if value < 25:
+            best_date = trade.get("time")
+    else:
+        break
 balances = {}
 
 current_trade = {}

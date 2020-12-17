@@ -26,7 +26,7 @@ def query_all_kraken(type,typelow,user,day_zero,sleep,extra=dict(),sort="time"):
     offset = 0
     items = []
     cahename=f"{typelow}.{user}.json"
-    if os.path.exists(cahename) and pathlib.Path(cahename).stat().st_mtime> datetime.datetime.now().timestamp() - 3600 *24:
+    if os.path.exists(cahename) and pathlib.Path(cahename).stat().st_mtime> datetime.datetime.utcnow().timestamp() - 3600 *24:
         items = json.load(open(f"{typelow}.{user}.json", "r"))
         continue_crawl = False
     import time
