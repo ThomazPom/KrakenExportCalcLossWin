@@ -14,7 +14,7 @@ day_end = datetime.datetime(year + 1, 1, 1, 0)
 start_time = day_one.timestamp()
 end_time = day_end.timestamp()
 
-user = "melody"
+user = "thomas"
 
 cessions = []
 cessions_raw = []
@@ -127,13 +127,14 @@ for index, partial_trade in enumerate(trades):
 
     if not "EUR" in partial_trade.get("pair"):
         continue
-
     trade = trade_group(partial_trade, trades, index)
     # trade=partial_trade
     if not trade:
         continue
-    if trade.get("time")>end_time:
+
+    if trade.get("time") > end_time:
         break
+
     for ledger in ledgers:
         if ledger["asset"] != "ZEUR" and ledger.get("time") < trade.get("time"):
             balances.setdefault(ledger["asset"], {"balance": 0})
@@ -145,6 +146,8 @@ for index, partial_trade in enumerate(trades):
     status["212"] = sum([bal.get("value_atm") for name, bal in balances.items() if bal.get("value_atm")])
 
     can_start = can_start or (trade["type"] == "buy" and var_212_back > 0 and trade.get("time") >= best_date)
+
+    #print(index, status["212"], can_start, trade["type"] == "buy", var_212_back > 0, trade.get("time") >= best_date)
     var_212_back = max(var_212_back, status["212"])
     if can_start and trade.get("type") == "buy":
         status["219"] += float(trade.get("cost"))
@@ -166,12 +169,14 @@ for index, partial_trade in enumerate(trades):
 
         status["224"] = status["218"] - status["223"] * status["217"] / status["212"]  # C18-C23*C17/C12
         status["Order ID"] = trade.get("ordertxid")
+        status["Order TS"] = trade.get("time")
         # status["Balance"] = balances
         cessions_raw.append(status.copy())
         last_cession = {ktranslate(k): v for k, v in status.items()}
         cessions.append(last_cession)
         status["219"] = 0
-functions.workbook(cessions, f"cessions.{user}.xlsx",
-                   lambda x: {'bg_color': "90ee90" if x[ktranslate("224")] > 0 else "ffa07a"})
 
 json.dump(cessions_raw, open(f"cessions.{user}.json", "w"), indent=4)
+
+functions.workbook(cessions, f"cessions.{user}.xlsx",
+                   lambda x: {'bg_color': "90ee90" if x[ktranslate("224")] > 0 else "ffa07a"})
