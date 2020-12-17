@@ -1,5 +1,4 @@
-
-import datetime,math,copy
+import datetime, math, copy
 import json
 import pathlib
 
@@ -15,7 +14,8 @@ import xlsxwriter
 
 from openpyxl.utils.cell import get_column_letter
 
-def query_all_kraken(type,typelow,user,day_zero,sleep,extra=dict(),sort="time"):
+
+def query_all_kraken(type, typelow, user, day_zero, sleep, extra=dict(), sort="time"):
     import python3krakenex.krakenex.api as kapi_m
 
     k = kapi_m.API()
@@ -25,16 +25,17 @@ def query_all_kraken(type,typelow,user,day_zero,sleep,extra=dict(),sort="time"):
     continue_crawl = True
     offset = 0
     items = []
-    cahename=f"{typelow}.{user}.json"
-    if os.path.exists(cahename) and pathlib.Path(cahename).stat().st_mtime> datetime.datetime.utcnow().timestamp() - 3600 *24:
+    cahename = f"{typelow}.{user}.json"
+    if os.path.exists(cahename) and pathlib.Path(
+            cahename).stat().st_mtime > datetime.datetime.utcnow().timestamp() - 3600 * 24:
         items = json.load(open(f"{typelow}.{user}.json", "r"))
         continue_crawl = False
     import time
 
     while continue_crawl:
         pp(f"query {type}")
-        crawl_part = k.query_private(type, {**extra,**{ 'start': day_zero.timestamp(),
-                                                  "end": datetime.datetime.now().timestamp(), "ofs": offset}})
+        crawl_part = k.query_private(type, {**extra, **{'start': day_zero.timestamp(),
+                                                        "end": datetime.datetime.now().timestamp(), "ofs": offset}})
         time.sleep(sleep)
 
         for key, val in crawl_part.get("result").get(typelow).items():
@@ -48,19 +49,22 @@ def query_all_kraken(type,typelow,user,day_zero,sleep,extra=dict(),sort="time"):
 
     items.sort(key=lambda x: x.get(sort))
     json.dump(items, open(f"{typelow}.{user}.json", "w"), indent=4)
-    return  items
+    return items
 
 
-def update_balances_values(balances, item, user,timekey="time",offset=0):
+def update_balances_values(balances, item, user, timekey="time", offset=0):
     for key, val in balances.items():
         if key is not "ZEUR":
-            ticker = query_at(key, item.get(timekey)+offset, user,"cryptowatch-data-"+datetime.datetime.fromtimestamp(item.get(timekey)+offset).isoformat()[0:7])
+            ticker = query_at(key, item.get(timekey) + offset, user,
+                              "cryptowatch-data-" + datetime.datetime.fromtimestamp(
+                                  item.get(timekey) + offset).isoformat()[0:7], register_not_in_list=False)
+            if not ticker:
+                ticker = query_at(key, item.get(timekey) + offset, user)  # Search further ..
             if not ticker:
                 continue
             val["price_atm"] = ticker.get("price")
             # pp(ticker)
             val["value_atm"] = ticker.get("price") * val["balance"]
-
 
 
 def workbook(things_to_export, filename="export.xlsx", stylecond=lambda x: {'bg_color': '#e8e8e8'}):
@@ -115,13 +119,12 @@ def workbook(things_to_export, filename="export.xlsx", stylecond=lambda x: {'bg_
                 worksheet.write_string(idx1, idx2, "\r\n".join(val2))
             else:
                 worksheet.write_string(idx1, idx2, str(val2))
-            worksheet.set_column(f"{column_letter}:{column_letter}", min(max_seen_value_len.get(column_letter),50))
+            worksheet.set_column(f"{column_letter}:{column_letter}", min(max_seen_value_len.get(column_letter), 50))
     for idx, key in enumerate(known_columns.keys()):
         worksheet.write_string(1, idx, key)
 
     worksheet.autofilter(rowdecal - 1, 0, len(things_to_export) + rowdecal, len(known_columns.keys()) - 1)
     workbook.close()
-
 
 
 def recompose_orders(trades):
@@ -161,18 +164,16 @@ def recompose_orders(trades):
         order_work["a"] = 1
 
 
-
-
-def query_at(name, ts, user,index="cryptowatch-data-*"):
+def query_at(name, ts, user, index="cryptowatch-data-*", register_not_in_list=True):
     global qatcache, not_in_list
     if name in not_in_list:
         return False
-    cahename=f"qatcache.{user}.json"
+    cahename = f"qatcache.{user}.json"
     if os.path.exists(cahename) and len(qatcache.keys()) == 0:
         qatcache = json.load(open(f"qatcache.{user}.json", "r"))
     if qatcache.get(f"{name}:{ts}"):
         return qatcache.get(f"{name}:{ts}")
-    print(f"Query Es for balance at {datetime.datetime.fromtimestamp(ts).isoformat()} and {name} (utc){datetime.datetime.utcfromtimestamp(ts).isoformat()}")
+    print(f"Query {index} for balance at {datetime.datetime.fromtimestamp(ts).isoformat()} and {name} (utc){datetime.datetime.utcfromtimestamp(ts).isoformat()}")
     query = {
         "query": {
             "bool": {
@@ -210,9 +211,10 @@ def query_at(name, ts, user,index="cryptowatch-data-*"):
                       data=json.dumps(query))
 
     result = r.json().get("hits").get("hits")
-    if len(result) == 0:
+    if len(result) == 0 :
         print("No result for :" + name)
-        not_in_list.append(name)
+        if register_not_in_list:
+            not_in_list.append(name)
         return False
     else:
         result = result[0].get("_source")
