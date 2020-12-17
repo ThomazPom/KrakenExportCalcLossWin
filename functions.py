@@ -168,7 +168,7 @@ def query_at(name, ts, user,index="cryptowatch-data-*"):
     if name in not_in_list:
         return False
     cahename=f"qatcache.{user}.json"
-    if os.path.exists(cahename) and len(qatcache.keys()) == 0 and pathlib.Path(cahename).stat().st_mtime> datetime.datetime.now().timestamp() - 3600 *24:
+    if os.path.exists(cahename) and len(qatcache.keys()) == 0:
         qatcache = json.load(open(f"qatcache.{user}.json", "r"))
     if qatcache.get(f"{name}:{ts}"):
         return qatcache.get(f"{name}:{ts}")
