@@ -15,6 +15,7 @@ start_time = day_one.timestamp()
 end_time = day_end.timestamp()
 
 user = "thomas"
+user_alt = "thomas"
 
 cessions = []
 cessions_raw = []
@@ -25,7 +26,7 @@ balances = {
 sleep = 4
 
 trades = functions.query_all_kraken("TradesHistory", "trades", user, day_zero, sleep)
-ledgers = functions.query_all_kraken("Ledgers", "ledger", user, day_zero, sleep)
+
 translate = {
     "212": "Balance before selling",
     "213": "Value got from selling",
@@ -64,33 +65,16 @@ def ktranslate(k):
     return f"{k}: {translate.get(k, '')}"
 
 
-can_start = False
-var_212_back = 0
 last_cession = False
 
-ledgers.sort(key=lambda x: x["time"])
 trades.sort(key=lambda x: x["time"])
 
-best_date = 0
+best_date_doc = functions.search_tradebal("*-history_of_trade_balance-*",
+                                          [{"match": {"user": user_alt}},
+                                           {"range": {"insert_ts": {"lte": day_one.timestamp()}}},
+                                           {"range": {"invested": {"lte": 30}}}])
 
-for trade in trades:
-    if not "EUR" in trade.get("pair"):
-        continue
-    for ledger in ledgers:
-        if ledger["asset"] != "ZEUR" and ledger.get("time") < trade.get("time"):
-            balances.setdefault(ledger["asset"], {"balance": 0})
-            balance = balances.get(ledger["asset"])
-            balance["balance"] = float(ledger["balance"])
-
-    functions.update_balances_values(balances, trade, user)
-    value = sum([bal.get("value_atm") for name, bal in balances.items() if bal.get("value_atm")])
-
-    if trade.get("time") < start_time:
-        if value < 25:
-            best_date = trade.get("time")
-    else:
-        break
-balances = {}
+best_date = best_date_doc.get("insert_ts")
 
 current_trade = {}
 
@@ -135,24 +119,16 @@ for index, partial_trade in enumerate(trades):
     if trade.get("time") > end_time:
         break
 
-    for ledger in ledgers:
-        if ledger["asset"] != "ZEUR" and ledger.get("time") < trade.get("time"):
-            balances.setdefault(ledger["asset"], {"balance": 0})
-            balance = balances.get(ledger["asset"])
-            balance["balance"] = float(ledger["balance"])
-
-    functions.update_balances_values(balances, trade, user)
     status["211"] = datetime.datetime.fromtimestamp(trade.get("time")).strftime("%d/%m/%Y, %H:%M")
-    status["212"] = sum([bal.get("value_atm") for name, bal in balances.items() if bal.get("value_atm")])
-
-    can_start = can_start or (trade["type"] == "buy" and var_212_back > 0 and trade.get("time") >= best_date)
-
-    #print(index, status["212"], can_start, trade["type"] == "buy", var_212_back > 0, trade.get("time") >= best_date)
-    var_212_back = max(var_212_back, status["212"])
-    if can_start and trade.get("type") == "buy":
-        print("BUY ", trade)
+    best_212_doc = functions.search_tradebal("*-history_of_trade_balance-*",
+                                             [{"match": {"user": user_alt}},
+                                              {"range": {"insert_date": {"lte": datetime.datetime.utcfromtimestamp(
+                                                  trade.get("time")).isoformat()}}},
+                                              ])
+    status["212"] = best_212_doc.get("invested")
+    if trade.get("type") == "buy" and trade.get("time") >= best_date:
         status["219"] += float(trade.get("cost"))
-    elif can_start and trade.get("type") == "sell":
+    elif trade.get("type") == "sell" and trade.get("time") >= best_date:
         print("SELL ", trade)
         status["220"] = status.get("219") + (last_cession[ktranslate("220")] if last_cession else 0)
         # B21+B23*B17/B12

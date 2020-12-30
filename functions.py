@@ -164,6 +164,41 @@ def recompose_orders(trades):
         order_work["a"] = 1
 
 
+def search_tradebal(index, must=[], must_not=[], filter=[], should=[], minimum_should_match=0, sort=None):
+    if sort is None:
+        sort = [
+            {"insert_date": {"order": "desc"}}
+        ]
+    query = {
+        "query": {
+            "bool": {
+                "must": must,
+                "filter": filter,
+                "must_not": must_not,
+                "should": should,
+                "minimum_should_match": minimum_should_match,
+                "boost": 1.0
+            }
+        },
+        "sort": sort
+    }
+    r = requests.post(f"{server}/{index}/_search", headers={
+        'content-type': 'application/json',
+    },
+                      data=json.dumps(query))
+
+    result = r.json().get("hits")
+    if not result:
+        pp(r.json())
+        pp(query)
+    result= result.get("hits")
+    if len(result) == 0:
+        print("No result")
+    else:
+        result = result[0].get("_source")
+    return result
+
+
 def query_at(name, ts, user, index="cryptowatch-data-*", register_not_in_list=True):
     global qatcache, not_in_list
     if name in not_in_list:
@@ -173,7 +208,8 @@ def query_at(name, ts, user, index="cryptowatch-data-*", register_not_in_list=Tr
         qatcache = json.load(open(f"qatcache.{user}.json", "r"))
     if qatcache.get(f"{name}:{ts}"):
         return qatcache.get(f"{name}:{ts}")
-    print(f"Query {index} for balance at {datetime.datetime.fromtimestamp(ts).isoformat()} and {name} (utc){datetime.datetime.utcfromtimestamp(ts).isoformat()}")
+    print(f"""Query {index} for balance at {datetime.datetime.fromtimestamp(
+        ts).isoformat()} and {name} (utc){datetime.datetime.utcfromtimestamp(ts).isoformat()}""")
     query = {
         "query": {
             "bool": {
@@ -211,7 +247,7 @@ def query_at(name, ts, user, index="cryptowatch-data-*", register_not_in_list=Tr
                       data=json.dumps(query))
 
     result = r.json().get("hits").get("hits")
-    if len(result) == 0 :
+    if len(result) == 0:
         print("No result for :" + name)
         if register_not_in_list:
             not_in_list.append(name)
