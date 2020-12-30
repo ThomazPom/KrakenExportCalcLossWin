@@ -1,3 +1,7 @@
+
+user = "jerome"
+user_alt = "jerome"
+
 import json
 
 import functions
@@ -14,8 +18,6 @@ day_end = datetime.datetime(year + 1, 1, 1, 0)
 start_time = day_one.timestamp()
 end_time = day_end.timestamp()
 
-user = "thomas"
-user_alt = "thomas"
 
 cessions = []
 cessions_raw = []
@@ -73,8 +75,10 @@ best_date_doc = functions.search_tradebal("*-history_of_trade_balance-*",
                                           [{"match": {"user": user_alt}},
                                            {"range": {"insert_ts": {"lte": day_one.timestamp()}}},
                                            {"range": {"invested": {"lte": 30}}}])
-
-best_date = best_date_doc.get("insert_ts")
+if type(best_date_doc) is list and not len(best_date_doc):
+    best_date = day_one.timestamp()
+else:
+    best_date = best_date_doc.get("insert_ts")
 
 current_trade = {}
 
@@ -125,6 +129,7 @@ for index, partial_trade in enumerate(trades):
                                               {"range": {"insert_date": {"lte": datetime.datetime.utcfromtimestamp(
                                                   trade.get("time")).isoformat()}}},
                                               ])
+    print(datetime.datetime.utcfromtimestamp(trade.get("time")).isoformat())
     status["212"] = best_212_doc.get("invested")
     if trade.get("type") == "buy" and trade.get("time") >= best_date:
         status["219"] += float(trade.get("cost"))

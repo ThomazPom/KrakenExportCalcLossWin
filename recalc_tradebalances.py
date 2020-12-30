@@ -6,8 +6,8 @@ pp = pprint.pprint
 
 import functions
 
-user = "thomas"
-user_alt = "thomas"
+user = "melody"
+user_alt = "melo"
 
 year = datetime.datetime.now().year
 day_zero = datetime.datetime(year - 5, 1, 1, 0)
@@ -70,4 +70,4 @@ for trade in trades:
     doc["trade_time"]=trade.get("time")
     doc["trade"]=trade
 #pp(trade_balance_history)
-json.dump(trade_balance_history,open(f"tradebalance.history.{user}.json","w"),indent=4)
+json.dump(trade_balance_history,open(f"tradebalance.history.{user}.json","w"),indent=None)

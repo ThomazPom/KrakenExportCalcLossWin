@@ -188,9 +188,6 @@ def search_tradebal(index, must=[], must_not=[], filter=[], should=[], minimum_s
                       data=json.dumps(query))
 
     result = r.json().get("hits")
-    if not result:
-        pp(r.json())
-        pp(query)
     result= result.get("hits")
     if len(result) == 0:
         print("No result")
