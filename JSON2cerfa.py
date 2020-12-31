@@ -2,7 +2,7 @@ import json
 
 from pdffunctions import PdfEditor
 
-user = "thomas"
+user = "jerome"
 
 userconf = json.load(open(f"config.{user}.sconf.json"))
 

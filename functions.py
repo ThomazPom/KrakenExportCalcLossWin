@@ -110,8 +110,8 @@ def workbook(things_to_export, filename="export.xlsx", stylecond=lambda x: {'bg_
 
             if type(val2) in [float, int]:
                 worksheet.write_number(idx1, idx2, round(val2, 2))
-                worksheet.write_formula(0, idx2, f"=SUBTOTAL(9,{column_letter}{rowdecal + 2}:{column_letter}"
-                                        + f"{len(things_to_export) + rowdecal + 2})")
+                worksheet.write_formula(0, idx2, f"=SUBTOTAL(9,{column_letter}{rowdecal+1}:{column_letter}"
+                                        + f"{len(things_to_export) + rowdecal})")
 
             elif is_keyval:
                 worksheet.write_string(idx1, idx2, "\r\n".join([f"{key}: {val}" for key, val in val2.items()]))
