@@ -1,6 +1,6 @@
 
-user = "thomas"
-user_alt = "thomas"
+user = "jerome"
+user_alt = "jerome"
 
 import json
 
@@ -26,8 +26,24 @@ balances = {
 
 }
 sleep = 4
+trades_dict = {
 
-trades = functions.query_all_kraken("TradesHistory", "trades", user, day_zero, sleep)
+}
+ledgers = functions.query_all_kraken("Ledgers", "ledger", user, day_zero, sleep).get("items")
+for ledger in ledgers:
+    trades_dict.setdefault(ledger.get("refid"), {})
+    trade = trades_dict.get(ledger.get("refid"))
+    trade["trades_id"] = ledger.get("refid")
+    trade["time"] = ledger.get("time")
+    if ledger.get("asset") == "ZEUR":
+        trade["cost"] = abs(float(ledger.get("amount")))
+        trade["fee"] = ledger["fee"]
+        trade["pair"] = trade.get("pair", "") + "ZEUR"
+        trade["type"] = "buy" if float(ledger.get("amount")) < 0 else "sell"
+    else:
+        trade["pair"] = ledger.get("asset") + trade.get("pair", "")
+        trade["vol"] = abs(float(ledger.get("amount")))
+trades=list(trades_dict.values())
 
 translate = {
     "212": "Balance before selling",
@@ -108,16 +124,15 @@ def trade_group(partial_trade, trades, index):
             result = partial_trade
         current_trade = {}
     return result
+    # if index+1==len(trades) or current_trade.get("trades_id")
 
 
-for index, partial_trade in enumerate(trades):
-
-    if not "EUR" in partial_trade.get("pair"):
+for index, trade in enumerate(trades):
+    if not "EUR" in trade.get("pair"):
         continue
-    trade = trade_group(partial_trade, trades, index)
-    # trade=partial_trade
-    if not trade:
+    if  "ZEUR" == trade.get("pair"):
         continue
+
 
     if trade.get("time") > end_time:
         break
@@ -128,10 +143,12 @@ for index, partial_trade in enumerate(trades):
                                               {"range": {"insert_date": {"lte": datetime.datetime.utcfromtimestamp(
                                                   trade.get("time")).isoformat()}}},
                                               ])
-    status["212"] = best_212_doc.get("invested")
+    print(best_212_doc)
     if trade.get("type") == "buy" and trade.get("time") >= best_date:
         status["219"] += float(trade.get("cost"))
     elif trade.get("type") == "sell" and trade.get("time") >= best_date:
+
+        status["212"] = best_212_doc.get("invested")
         print("SELL ", trade)
         status["220"] = status.get("219") + (last_cession[ktranslate("220")] if last_cession else 0)
         # B21+B23*B17/B12

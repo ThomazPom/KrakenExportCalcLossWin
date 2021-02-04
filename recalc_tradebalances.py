@@ -6,8 +6,8 @@ pp = pprint.pprint
 
 import functions
 
-user = "melody"
-user_alt = "melo"
+user = "jerome"
+user_alt = "jerome"
 
 year = datetime.datetime.now().year
 day_zero = datetime.datetime(year - 5, 1, 1, 0)

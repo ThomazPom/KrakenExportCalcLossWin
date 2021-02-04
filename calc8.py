@@ -1,34 +1,76 @@
-
-user = "thomas"
-user_alt = "thomas"
+import datetime
 
 import json
 
 import functions
-import os, datetime, pprint
 
-pp = pprint.pprint
+user = "melody"
+user_alt = "melo"
 
-year = datetime.datetime.now().year
 year = 2021
-day_zero = datetime.datetime(year - 5, 1, 1, 0)
-day_one = datetime.datetime(year, 1, 1, 0)
-day_end = datetime.datetime(year + 1, 1, 1, 0)
+day_zero = datetime.datetime(year - 5, 1, 1, 0, tzinfo=datetime.timezone.utc)
+day_one = datetime.datetime(year, 1, 1, 0, tzinfo=datetime.timezone.utc)
+day_end = datetime.datetime(year + 1, 1, 1, 0, tzinfo=datetime.timezone.utc)
 
-start_time = day_one.timestamp()
-end_time = day_end.timestamp()
+sleep = 5
+# my timestamps are gmt .. insert dates are utc
 
+last_ledgers = functions.query_all_kraken("Ledgers", "ledger", user, day_one, 0, end_day=day_end, crawl_to=10,
+                                          use_cache=False)
 
-cessions = []
-cessions_raw = []
+offsetmax = last_ledgers.get("meta").get("set_size") - 10
 
-balances = {
+fisrt_ledgers = functions.query_all_kraken("Ledgers", "ledger", user, day_one, 0, end_day=day_end, offset=offsetmax,
+                                           use_cache=False)
+
+first_ledger_dt = datetime.datetime.utcfromtimestamp(fisrt_ledgers["items"][0].get("time")).isoformat()
+
+best_date_doc = functions.search_tradebal("*-history_of_trade_balance-*",
+                                          [{"match": {"user": user_alt}},
+                                           {"range": {"insert_date": {"lte": first_ledger_dt}}},
+                                           {"range": {"invested": {"lte": 30}}}])
+
+print(first_ledger_dt)
+print(best_date_doc.get("insert_date"))
+best_date_dt = datetime.datetime.fromisoformat(best_date_doc.get("insert_date"))
+print(best_date_dt)
+
+ledgers = functions.query_all_kraken("Ledgers", "ledger", user, best_date_dt, 4, end_day=day_end, use_cache=True).get(
+    "items")
+
+trades_dict = {
 
 }
-sleep = 4
 
-trades = functions.query_all_kraken("TradesHistory", "trades", user, day_zero, sleep)
+for index, ledger in enumerate(ledgers):
+    trades_dict.setdefault(ledger.get("refid"), {})
+    trade = trades_dict.get(ledger.get("refid"))
+    trade["trades_id"] = ledger.get("refid")
+    trade["time"] = ledger.get("time")
+    if ledger.get("asset") == "ZEUR":
+        trade["cost"] = abs(float(ledger.get("amount")))
+        trade["fee"] = ledger["fee"]
+        trade["pair"] = trade.get("pair", "") + "ZEUR"
+        trade["type"] = "buy" if float(ledger.get("amount")) < 0 else "sell"
+    else:
+        trade["pair"] = ledger.get("asset") + trade.get("pair", "")
+        trade["vol"] = abs(float(ledger.get("amount")))
 
+    trade["ordertxid"] = str(index)
+
+# prefer use data from api
+
+ledgers = functions.query_all_kraken("Ledgers", "ledger", user, best_date_dt, sleep, end_day=day_end,
+                                     use_cache=True).get(
+    "items")
+
+trades_alones = functions.query_all_kraken("TradesHistory", "trades", user, best_date_dt, sleep, end_day=day_end,
+                                           use_cache=True).get("items")
+for trade in trades_alones:
+    trades_dict[trade["trades_id"]] = trade
+
+trades = list(trades_dict.values())
+trades.sort(key=lambda x: x["time"])
 translate = {
     "212": "Balance before selling",
     "213": "Value got from selling",
@@ -69,16 +111,9 @@ def ktranslate(k):
 
 last_cession = False
 
-trades.sort(key=lambda x: x["time"])
+cessions_raw = []
 
-best_date_doc = functions.search_tradebal("*-history_of_trade_balance-*",
-                                          [{"match": {"user": user_alt}},
-                                           {"range": {"insert_ts": {"lte": day_one.timestamp()}}},
-                                           {"range": {"invested": {"lte": 30}}}])
-if type(best_date_doc) is list and not len(best_date_doc):
-    best_date = day_one.timestamp()
-else:
-    best_date = best_date_doc.get("insert_ts")
+cessions = []
 
 current_trade = {}
 
@@ -111,16 +146,14 @@ def trade_group(partial_trade, trades, index):
 
 
 for index, partial_trade in enumerate(trades):
-
     if not "EUR" in partial_trade.get("pair"):
+        continue
+    if "ZEUR" == partial_trade.get("pair"):
         continue
     trade = trade_group(partial_trade, trades, index)
     # trade=partial_trade
     if not trade:
         continue
-
-    if trade.get("time") > end_time:
-        break
 
     status["211"] = datetime.datetime.fromtimestamp(trade.get("time")).strftime("%d/%m/%Y, %H:%M")
     best_212_doc = functions.search_tradebal("*-history_of_trade_balance-*",
@@ -128,10 +161,12 @@ for index, partial_trade in enumerate(trades):
                                               {"range": {"insert_date": {"lte": datetime.datetime.utcfromtimestamp(
                                                   trade.get("time")).isoformat()}}},
                                               ])
+
     status["212"] = best_212_doc.get("invested")
-    if trade.get("type") == "buy" and trade.get("time") >= best_date:
+    if trade.get("type") == "buy" and trade.get("time") >= best_date_dt.timestamp():
         status["219"] += float(trade.get("cost"))
-    elif trade.get("type") == "sell" and trade.get("time") >= best_date:
+    elif trade.get("type") == "sell" and trade.get("time") >= best_date_dt.timestamp():
+
         print("SELL ", trade)
         status["220"] = status.get("219") + (last_cession[ktranslate("220")] if last_cession else 0)
         # B21+B23*B17/B12

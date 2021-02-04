@@ -15,7 +15,8 @@ import xlsxwriter
 from openpyxl.utils.cell import get_column_letter
 
 
-def query_all_kraken(type, typelow, user, day_zero, sleep, extra=dict(), sort="time"):
+def query_all_kraken(type, typelow, user, day_zero, sleep, extra=dict(), sort="time",
+                     end_day=datetime.datetime.utcnow(), offset=0, use_cache=True, crawl_to=math.inf):
     import python3krakenex.krakenex.api as kapi_m
 
     k = kapi_m.API()
@@ -23,19 +24,22 @@ def query_all_kraken(type, typelow, user, day_zero, sleep, extra=dict(), sort="t
     k.load_key(f'{user}.key')
 
     continue_crawl = True
-    offset = 0
     items = []
-    cahename = f"{typelow}.{user}.json"
-    if os.path.exists(cahename) and pathlib.Path(
-            cahename).stat().st_mtime > datetime.datetime.utcnow().timestamp() - 3600 * 24:
-        items = json.load(open(f"{typelow}.{user}.json", "r"))
+    cache_name = f"{typelow}.{user}.json"
+
+    """print(cache_name,os.path.exists(cache_name),pathlib.Path(
+            cache_name).stat().st_mtime,datetime.datetime.utcnow().timestamp()- 3600 * 24,pathlib.Path(
+            cache_name).stat().st_mtime>datetime.datetime.utcnow().timestamp()- 3600 * 24,)"""
+    if use_cache and os.path.exists(cache_name) and pathlib.Path(
+            cache_name).stat().st_mtime > datetime.datetime.utcnow().timestamp() - 3600 * 24:
+        items = json.load(open(cache_name, "r"))
         continue_crawl = False
     import time
-
-    while continue_crawl:
+    crawl_part=None
+    while continue_crawl and offset < crawl_to:
         pp(f"query {type}")
         crawl_part = k.query_private(type, {**extra, **{'start': day_zero.timestamp(),
-                                                        "end": datetime.datetime.now().timestamp(), "ofs": offset}})
+                                                        "end": end_day.timestamp(), "ofs": offset}})
         time.sleep(sleep)
 
         for key, val in crawl_part.get("result").get(typelow).items():
@@ -48,8 +52,9 @@ def query_all_kraken(type, typelow, user, day_zero, sleep, extra=dict(), sort="t
         print(f'{offset}/{crawl_part.get("result").get("count")}')
 
     items.sort(key=lambda x: x.get(sort))
-    json.dump(items, open(f"{typelow}.{user}.json", "w"), indent=4)
-    return items
+    if use_cache:
+        json.dump(items, open(f"{typelow}.{user}.json", "w"), indent=4)
+    return {"items":items,"meta":{"set_size":crawl_part.get("result").get("count") if crawl_part else len(items)}}
 
 
 def update_balances_values(balances, item, user, timekey="time", offset=0):
@@ -110,7 +115,7 @@ def workbook(things_to_export, filename="export.xlsx", stylecond=lambda x: {'bg_
 
             if type(val2) in [float, int]:
                 worksheet.write_number(idx1, idx2, round(val2, 2))
-                worksheet.write_formula(0, idx2, f"=SUBTOTAL(9,{column_letter}{rowdecal+1}:{column_letter}"
+                worksheet.write_formula(0, idx2, f"=SUBTOTAL(9,{column_letter}{rowdecal + 1}:{column_letter}"
                                         + f"{len(things_to_export) + rowdecal})")
 
             elif is_keyval:
@@ -188,9 +193,9 @@ def search_tradebal(index, must=[], must_not=[], filter=[], should=[], minimum_s
                       data=json.dumps(query))
 
     result = r.json().get("hits")
-    result= result.get("hits")
+    result = result.get("hits")
     if len(result) == 0:
-        print("No result")
+        print("No result", index, must)
     else:
         result = result[0].get("_source")
     return result
@@ -200,8 +205,8 @@ def query_at(name, ts, user, index="cryptowatch-data-*", register_not_in_list=Tr
     global qatcache, not_in_list
     if name in not_in_list:
         return False
-    cahename = f"qatcache.{user}.json"
-    if os.path.exists(cahename) and len(qatcache.keys()) == 0:
+    cache_name = f"qatcache.{user}.json"
+    if os.path.exists(cache_name) and len(qatcache.keys()) == 0:
         qatcache = json.load(open(f"qatcache.{user}.json", "r"))
     if qatcache.get(f"{name}:{ts}"):
         return qatcache.get(f"{name}:{ts}")

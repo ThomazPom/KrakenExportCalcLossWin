@@ -2,7 +2,7 @@ import json
 
 from pdffunctions import PdfEditor
 
-user = "jerome"
+user = "melody"
 
 userconf = json.load(open(f"config.{user}.sconf.json"))
 
@@ -20,7 +20,9 @@ def do_2019():
         "name2": [190, 433, 0],
         "firstname2": [190, 449, 0],
         "postal_address2": [190, 467, 0],
-        "total_calc": [423, 292, 1]
+        "total_calc": [423, 292, 1],
+        "total_calc_2": [450, 361, 4],
+        "grand_total_calc": [450, 462, 4]
     }
     calc_fields = {
         "211": [188, 507, 0],
@@ -69,7 +71,9 @@ def do_pdf(pdfdata):
             "name2": userconf.get("name"),
             "firstname2": userconf.get("firstname"),
             "postal_address2": userconf.get("postal_address"),
-            "total_calc":round(sum([x.get("224") for x in cessions_subset]),2)
+            "total_calc":round(sum([x.get("224") for x in cessions_subset]),2),
+            "total_calc_2":round(sum([x.get("224") for x in cessions_subset]),2),
+            "grand_total_calc":round(sum([x.get("224") for x in cessions]),2)
         }
                     , monPDF)
         for subset_index, cession in enumerate(cessions_subset):
