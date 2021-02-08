@@ -4,14 +4,13 @@ import json
 
 import functions
 
-user = "melody"
-user_alt = "melo"
+user = "thomas"
+user_alt = "thomas"
 
 year = 2021
-day_zero = datetime.datetime(year - 5, 1, 1, 0, tzinfo=datetime.timezone.utc)
 day_one = datetime.datetime(year, 1, 1, 0, tzinfo=datetime.timezone.utc)
 day_end = datetime.datetime(year + 1, 1, 1, 0, tzinfo=datetime.timezone.utc)
-
+try_adjust_when_no_data = True
 sleep = 5
 # my timestamps are gmt .. insert dates are utc
 
@@ -176,6 +175,8 @@ for index, partial_trade in enumerate(trades):
             ktranslate("212")]) if last_cession else 0
         status["223"] = status["220"] - status["221"] - status["222"]
         status["213"] = float(trade.get("cost"))
+        if status["213"] > status["212"] and try_adjust_when_no_data:
+            status["212"] += status["213"]
         status["214"] = float(trade.get("fee"))
         status["215"] = status["213"] - status["214"]
         status["216"] = 0
